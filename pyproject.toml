@@ -1,0 +1,19 @@
+[project]
+name = "healthcare-noshow"
+version = "0.1.0"
+description = "Healthcare appointment no-show analytics API (FastAPI + PostgreSQL)"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
+markers = [
+    "integration: tests that require a live PostgreSQL database",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
