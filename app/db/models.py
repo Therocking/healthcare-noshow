@@ -77,8 +77,8 @@ patients = Table(
         nullable=False,
         server_default=text("now()"),
     ),
-    CheckConstraint("gender IN ('M', 'F')", name="patients_gender_valid"),
-    CheckConstraint("handicap BETWEEN 0 AND 4", name="patients_handicap_range"),
+    CheckConstraint("gender IN ('M', 'F')", name="gender_valid"),
+    CheckConstraint("handicap BETWEEN 0 AND 4", name="handicap_range"),
 )
 
 
@@ -109,11 +109,11 @@ appointments = Table(
         nullable=False,
         server_default=text("now()"),
     ),
-    CheckConstraint("age_at_appointment >= 0", name="appt_age_non_negative"),
+    CheckConstraint("age_at_appointment >= 0", name="age_non_negative"),
     # You cannot schedule an appointment for a day before it was booked.
     CheckConstraint(
         "appointment_at >= scheduled_at::DATE",
-        name="appt_after_scheduled",
+        name="after_scheduled",
     ),
 )
 
