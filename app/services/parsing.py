@@ -94,8 +94,8 @@ def _parse_gender(raw: str | None) -> str:
     if not raw or not raw.strip():
         raise ValueError("gender is missing")
     first = raw.strip()[0].upper()
-    if first not in ("M", "F"):
-        raise ValueError(f"gender must be M/F (or Male/Female): {raw!r}")
+    if first not in ("M", "F", "O"):
+        raise ValueError(f"gender must be M/F/O (Male/Female/Other): {raw!r}")
     return first
 
 

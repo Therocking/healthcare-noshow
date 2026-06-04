@@ -102,7 +102,7 @@ Surrogate key, populated on ingest. One row per distinct neighbourhood name.
 | Column | Type | Notes |
 | --- | --- | --- |
 | `patient_id` | `BIGINT` PK | natural key from the CSV |
-| `gender` | `CHAR(1)` | `CHECK IN ('M','F')` |
+| `gender` | `CHAR(1)` | `CHECK IN ('M','F','O')` (M / F / Other) |
 | `year_of_birth` | `SMALLINT` | derived: `appointment_year − age` |
 | `scholarship` | `BOOLEAN` | default `false` |
 | `hypertension` | `BOOLEAN` | default `false` |
@@ -152,7 +152,7 @@ The loader accepts **two header dialects** and normalises both:
 | Target | Derived from CSV | Transformation |
 | --- | --- | --- |
 | `patient_id` / `appointment_id` | `patient_id` / `appointment_id` | strip non-digits (`PAT-25795` → `25795`) |
-| `gender` | `gender` | first letter upper → `M`/`F` (`Female` → `F`) |
+| `gender` | `gender` | first letter upper → `M`/`F`/`O` (`Female` → `F`, `Other` → `O`) |
 | `year_of_birth` | `age` + `appointment_day` | `appointment_year − age` |
 | `neighbourhood.name` | `neighbourhood`/`neighborhood` | trimmed; deduplicated |
 | `scheduled_at` | `scheduled_day` | ISO date/datetime (UTC) |

@@ -39,6 +39,24 @@ def test_happy_path_maps_all_fields():
     assert rec.appointment["sms_received"] is True
 
 
+def test_other_gender_maps_to_o():
+    raw = _csv(
+        "APT-100008,PAT-700,29,Other,East,2024-02-10,2024-02-14,8,0,0,0,0,0,0"
+    )
+    result = parse_csv(raw)
+    assert result.errors == []
+    assert result.records[0].patient["gender"] == "O"
+
+
+def test_invalid_gender_is_rejected():
+    raw = _csv(
+        "APT-100009,PAT-701,29,Zz,East,2024-02-10,2024-02-14,8,0,0,0,0,0,0"
+    )
+    result = parse_csv(raw)
+    assert len(result.errors) == 1
+    assert "gender" in result.errors[0][1]
+
+
 def test_accepts_original_kaggle_header_dialect():
     header = (
         "PatientId,AppointmentID,Gender,ScheduledDay,AppointmentDay,Age,"

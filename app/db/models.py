@@ -77,7 +77,7 @@ patients = Table(
         nullable=False,
         server_default=text("now()"),
     ),
-    CheckConstraint("gender IN ('M', 'F')", name="gender_valid"),
+    CheckConstraint("gender IN ('M', 'F', 'O')", name="gender_valid"),
     CheckConstraint("handicap BETWEEN 0 AND 4", name="handicap_range"),
 )
 
