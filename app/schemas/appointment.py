@@ -28,7 +28,7 @@ class AppointmentIn(BaseModel):
     no_show: bool
 
     @model_validator(mode="after")
-    def _appointment_not_before_scheduled_day(self) -> "AppointmentIn":
+    def _appointment_not_before_scheduled_day(self) -> AppointmentIn:
         # Mirrors the DB CHECK (appointment_at >= scheduled_at::DATE): the visit
         # cannot land on a calendar day earlier than the day it was booked.
         if self.appointment_at.date() < self.scheduled_at.date():

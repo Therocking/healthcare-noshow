@@ -11,9 +11,9 @@ untouched. Deduplication is delegated to PostgreSQL via ``INSERT ... ON CONFLICT
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from collections.abc import Iterable, Iterator, Sequence
+from datetime import UTC, datetime
 from itertools import islice
-from typing import Iterable, Iterator, Sequence
 
 from sqlalchemy import Connection, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -67,7 +67,7 @@ def _upsert_patients(conn: Connection, rows: list[dict]) -> tuple[int, int]:
     if not deduped:
         return 0, 0
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     inserted = 0
     total = 0
     for chunk in _chunked(list(deduped.values()), _CHUNK):

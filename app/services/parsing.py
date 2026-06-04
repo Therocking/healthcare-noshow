@@ -22,7 +22,7 @@ import csv
 import io
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # Map each logical field to the header names we accept (compared case-insensitively
 # after stripping spaces/underscores/hyphens).
@@ -135,7 +135,7 @@ def _parse_datetime(raw: str | None, label: str) -> datetime:
         except ValueError as exc:
             raise ValueError(f"{label} is not a valid date/datetime: {raw!r}") from exc
     if dtv.tzinfo is None:
-        dtv = dtv.replace(tzinfo=timezone.utc)
+        dtv = dtv.replace(tzinfo=UTC)
     return dtv
 
 
