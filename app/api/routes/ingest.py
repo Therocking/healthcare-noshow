@@ -41,7 +41,9 @@ def upload_csv(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is empty"
         )
 
-    logger.info("csv upload received", extra={"filename": filename, "bytes": len(raw)})
+    logger.info(
+        "csv upload received", extra={"upload_filename": filename, "bytes": len(raw)}
+    )
     return ingest_csv(conn, raw)
 
 

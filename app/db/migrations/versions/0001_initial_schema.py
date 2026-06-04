@@ -66,10 +66,10 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
-        sa.CheckConstraint("gender IN ('M', 'F')", name="ck_patients_gender_valid"),
-        sa.CheckConstraint(
-            "handicap BETWEEN 0 AND 4", name="ck_patients_handicap_range"
-        ),
+        # Bare logical names; Alembic prefixes them via the metadata naming
+        # convention to ck_patients_gender_valid / ck_patients_handicap_range.
+        sa.CheckConstraint("gender IN ('M', 'F')", name="gender_valid"),
+        sa.CheckConstraint("handicap BETWEEN 0 AND 4", name="handicap_range"),
         sa.PrimaryKeyConstraint("patient_id", name="pk_patients"),
     )
 
@@ -92,12 +92,9 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
+        sa.CheckConstraint("age_at_appointment >= 0", name="age_non_negative"),
         sa.CheckConstraint(
-            "age_at_appointment >= 0", name="ck_appointments_age_non_negative"
-        ),
-        sa.CheckConstraint(
-            "appointment_at >= scheduled_at::DATE",
-            name="ck_appointments_after_scheduled",
+            "appointment_at >= scheduled_at::DATE", name="after_scheduled"
         ),
         sa.ForeignKeyConstraint(
             ["patient_id"],
