@@ -339,15 +339,63 @@ docker-compose.yml · Dockerfile · alembic.ini · sample_data.csv
 
 ---
 
-## Cloud deployment notes
+## Cloud deployment (Azure)
 
-The container is provider-agnostic. A typical managed deployment:
+The image is provider-agnostic, but a ready-to-use Azure pipeline is included.
 
-- **Database:** managed PostgreSQL (AWS RDS / GCP Cloud SQL / Azure Database).
-- **API:** the image on a container runtime (ECS Fargate / Cloud Run / Container Apps).
-- **Config:** inject `DATABASE_URL` (or `POSTGRES_*`) and `LOG_LEVEL` from the
-  platform's secret manager.
-- **Migrations:** the entrypoint runs `alembic upgrade head` on start; for
-  zero-downtime, run migrations as a separate release step instead.
-- **Logs:** JSON to stdout is picked up by CloudWatch / Cloud Logging directly.
+### Architecture
+
+```mermaid
+flowchart LR
+    gh[GitHub Actions<br/>deploy.yml] -->|1. test gate| gh
+    gh -->|2. build + push| acr[(Azure Container Registry)]
+    gh -->|3. set image| app[Azure App Service<br/>Web App for Containers]
+    acr -->|managed-identity pull| app
+    app -->|sslmode=require| pg[(Azure Database for<br/>PostgreSQL Flexible Server)]
+```
+
+### Pipeline — `.github/workflows/deploy.yml`
+
+Runs on every push to `main` as three gated jobs:
+
+1. **test** — full suite against a PostgreSQL service + `ruff`. **If it fails the
+   run stops here** — nothing is built or deployed.
+2. **build-and-push** — builds the Docker image and pushes it to **Azure
+   Container Registry** (tagged with the commit SHA and `latest`).
+3. **deploy** — points the **Azure App Service** web app at the new image, then
+   smoke-tests `GET /health`. The container entrypoint runs `alembic upgrade head`
+   on start, so the schema migrates automatically on each release.
+
+### One-time setup
+
+Provision the Azure resources and the GitHub OIDC identity:
+
+```bash
+# edit the variables at the top first (GITHUB_REPO, names, region)
+bash infra/azure-provision.sh
+```
+
+The script creates the resource group, ACR, PostgreSQL Flexible Server, App
+Service plan + Web App (with `WEBSITES_PORT=8000`, `DATABASE_URL` incl.
+`sslmode=require`, and AcrPull via managed identity), and a federated GitHub
+identity. It prints the values to add to **GitHub → Settings → Secrets and
+variables → Actions**:
+
+| Type | Name | Purpose |
+| --- | --- | --- |
+| Secret | `AZURE_CLIENT_ID` | OIDC app registration (client) id |
+| Secret | `AZURE_TENANT_ID` | Azure AD tenant id |
+| Secret | `AZURE_SUBSCRIPTION_ID` | target subscription |
+| Variable | `ACR_NAME` | registry name (e.g. `noshowacr123`) |
+| Variable | `ACR_LOGIN_SERVER` | e.g. `noshowacr123.azurecr.io` |
+| Variable | `AZURE_WEBAPP_NAME` | the Web App name |
+
+Authentication uses **OIDC federated credentials** (no long-lived secrets/
+passwords stored in GitHub). Push to `main` to trigger the pipeline; the live API
+is then at `https://<AZURE_WEBAPP_NAME>.azurewebsites.net` (`/docs` for Swagger).
+
+> **Other targets:** the same image runs unchanged on Azure Container Apps, AWS
+> ECS/Fargate, or GCP Cloud Run — point them at the ACR image and set
+> `DATABASE_URL`, `LOG_LEVEL`, and the listen port (`8000`). Structured JSON logs
+> to stdout are ingested by Azure Monitor / CloudWatch / Cloud Logging directly.
 ```

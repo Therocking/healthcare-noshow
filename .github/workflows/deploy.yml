@@ -1,0 +1,121 @@
+name: CI/CD - Test, Build, Deploy to Azure
+
+# Pipeline: test (gate) -> build & push image to Azure Container Registry ->
+# deploy the image to Azure App Service (Web App for Containers).
+# If the test job fails the whole run stops and nothing is built or deployed.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write   # required for Azure OIDC (azure/login federated credentials)
+
+env:
+  IMAGE_NAME: healthcare-noshow
+
+jobs:
+  # 1) TEST — runs the full suite against a real PostgreSQL. Build/deploy
+  #    depend on this job, so a red test stops the pipeline here.
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: noshow
+          POSTGRES_PASSWORD: noshow
+          POSTGRES_DB: noshow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U noshow -d noshow"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg2://noshow:noshow@localhost:5432/noshow
+      TEST_DATABASE_URL: postgresql+psycopg2://noshow:noshow@localhost:5432/noshow
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt ruff
+      - name: Lint (ruff)
+        run: ruff check .
+      - name: Apply migrations
+        run: alembic upgrade head
+      - name: Run tests
+        run: pytest -v
+
+  # 2) BUILD & PUSH — only after tests pass. Builds the Docker image and pushes
+  #    it to Azure Container Registry (ACR), tagged with the commit SHA + latest.
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Compute image reference
+        id: image
+        run: |
+          echo "ref=${{ vars.ACR_LOGIN_SERVER }}/${IMAGE_NAME}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push to ACR
+        run: |
+          az acr login --name "${{ vars.ACR_NAME }}"
+          docker build \
+            -t "${{ steps.image.outputs.ref }}" \
+            -t "${{ vars.ACR_LOGIN_SERVER }}/${IMAGE_NAME}:latest" \
+            .
+          docker push "${{ steps.image.outputs.ref }}"
+          docker push "${{ vars.ACR_LOGIN_SERVER }}/${IMAGE_NAME}:latest"
+
+  # 3) DEPLOY — point the Azure App Service (Web App for Containers) at the new
+  #    image. The container entrypoint runs `alembic upgrade head` on start, so
+  #    the database schema is migrated automatically on each release.
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
+    steps:
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy image to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          images: ${{ needs.build-and-push.outputs.image }}
+
+      - name: Smoke test the live endpoint
+        run: |
+          url="https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$url" || true)
+            if [ "$code" = "200" ]; then echo "healthy"; exit 0; fi
+            echo "attempt $i: HTTP $code, retrying..."; sleep 10
+          done
+          echo "health check failed"; exit 1
