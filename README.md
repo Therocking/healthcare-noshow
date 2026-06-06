@@ -368,18 +368,26 @@ Runs on every push to `main` as three gated jobs:
 
 ### One-time setup
 
-Provision the Azure resources and the GitHub OIDC identity:
+Provision the Azure resources and the GitHub OIDC identity (after `az login`):
 
 ```bash
-# edit the variables at the top first (GITHUB_REPO, names, region)
-bash infra/azure-provision.sh
+bash infra/azure-provision.sh                 # provision + print the creds
+bash infra/azure-provision.sh --push-github   # also set the GitHub secrets/vars (needs gh)
 ```
 
-The script creates the resource group, ACR, PostgreSQL Flexible Server, App
-Service plan + Web App (with `WEBSITES_PORT=8000`, `DATABASE_URL` incl.
-`sslmode=require`, and AcrPull via managed identity), and a federated GitHub
-identity. It prints the values to add to **GitHub → Settings → Secrets and
-variables → Actions**:
+The script is **idempotent** — safe to re-run. It auto-detects the GitHub repo
+from the `origin` remote, derives deterministic resource names from your
+subscription + resource group, and caches the generated PostgreSQL password at
+`infra/.pg-password` so `DATABASE_URL` stays stable across runs. Override any
+default via env vars (e.g. `LOCATION=westeurope ACR_NAME=myacr bash infra/azure-provision.sh`).
+
+It creates the resource group, ACR, PostgreSQL Flexible Server, App Service plan
++ Web App (with `WEBSITES_PORT=8000`, `DATABASE_URL` incl. `sslmode=require`, and
+AcrPull via managed identity), and a federated GitHub identity with **two**
+credentials — one for the build job (`ref:refs/heads/main`) and one for the
+deploy job (`environment:production`). It prints the values to add to **GitHub →
+Settings → Secrets and variables → Actions** (or sets them for you with
+`--push-github`):
 
 | Type | Name | Purpose |
 | --- | --- | --- |

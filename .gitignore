@@ -19,6 +19,9 @@ env/
 # Environment / secrets
 .env
 *.local
+# Azure provisioning secrets (generated locally, never commit)
+infra/.pg-password
+infra/.azure-creds.txt
 
 # IDE / OS
 .idea/
