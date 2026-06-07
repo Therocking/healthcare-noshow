@@ -25,6 +25,10 @@ set -euo pipefail
 
 # ----------------------------- configuration -------------------------------
 LOCATION="${LOCATION:-eastus}"
+# PostgreSQL Flexible Server is region-restricted on some subscriptions (notably
+# "Azure for Students", where eastus/eastus2 return "location is restricted").
+# Default it to a region that accepts the Burstable tier; override if needed.
+PG_LOCATION="${PG_LOCATION:-canadacentral}"
 RESOURCE_GROUP="${RESOURCE_GROUP:-noshow-rg}"
 APP_PLAN="${APP_PLAN:-noshow-plan}"
 PG_ADMIN="${PG_ADMIN:-noshowadmin}"
@@ -97,7 +101,7 @@ ACR_ID="$(az acr show -n "$ACR_NAME" --query id -o tsv)"
 echo "==> PostgreSQL flexible server: $PG_SERVER"
 if ! az postgres flexible-server show -g "$RESOURCE_GROUP" -n "$PG_SERVER" -o none 2>/dev/null; then
   az postgres flexible-server create \
-    -g "$RESOURCE_GROUP" -n "$PG_SERVER" -l "$LOCATION" \
+    -g "$RESOURCE_GROUP" -n "$PG_SERVER" -l "$PG_LOCATION" \
     --admin-user "$PG_ADMIN" --admin-password "$PG_PASSWORD" \
     --tier Burstable --sku-name Standard_B1ms --version 16 \
     --storage-size 32 --public-access 0.0.0.0 --yes -o none
