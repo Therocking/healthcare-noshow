@@ -117,8 +117,11 @@ else
   az postgres flexible-server update -g "$RESOURCE_GROUP" -n "$PG_SERVER" \
     --admin-password "$PG_PASSWORD" -o none
 fi
+# Note: the database flag here is -n/--name (NOT -d, which is the server-create
+# flag); the wrong flag silently no-ops and the app then fails with
+# 'database "noshow" does not exist'. Ignore only the "already exists" case.
 az postgres flexible-server db create \
-  -g "$RESOURCE_GROUP" -s "$PG_SERVER" -d "$PG_DB" -o none 2>/dev/null || true
+  -g "$RESOURCE_GROUP" -s "$PG_SERVER" -n "$PG_DB" -o none 2>/dev/null || true
 PG_HOST="$(az postgres flexible-server show -g "$RESOURCE_GROUP" -n "$PG_SERVER" --query fullyQualifiedDomainName -o tsv)"
 DATABASE_URL="postgresql+psycopg2://${PG_ADMIN}:${PG_PASSWORD}@${PG_HOST}:5432/${PG_DB}?sslmode=require"
 
