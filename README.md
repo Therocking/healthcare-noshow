@@ -1,5 +1,13 @@
 # Healthcare Appointment No-Show Analytics
 
+> ### 🟢 Live demo — deployed on Azure
+> **API:** https://noshow-api-a50209a6.azurewebsites.net
+> · **Swagger docs:** [`/docs`](https://noshow-api-a50209a6.azurewebsites.net/docs)
+> · **Health:** [`/health`](https://noshow-api-a50209a6.azurewebsites.net/health)
+>
+> Running as a container on Azure App Service with Azure Database for PostgreSQL,
+> deployed automatically via the GitHub Actions CI/CD pipeline (test → build → deploy).
+
 A data-engineering service that ingests a denormalised healthcare appointment
 CSV into a **normalised PostgreSQL** schema and exposes **no-show analytics** over
 a REST API. Built for the Horatio Data Engineering challenge.
