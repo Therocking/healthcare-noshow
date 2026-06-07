@@ -23,6 +23,13 @@
 #   LOCATION=westeurope ACR_NAME=myacr bash infra/azure-provision.sh
 set -euo pipefail
 
+# On Git Bash / MSYS2 (Windows), arguments that look like Unix paths (e.g. the
+# "/subscriptions/.../resourceGroups/..." role-assignment scopes) get rewritten
+# to Windows paths before reaching `az`, which then fails with "MissingSubscription".
+# Disable that path conversion. Harmless/no-op on Linux and Azure Cloud Shell.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+
 # ----------------------------- configuration -------------------------------
 LOCATION="${LOCATION:-eastus}"
 # PostgreSQL Flexible Server is region-restricted on some subscriptions (notably
